@@ -1,0 +1,142 @@
+<div class="container">
+    <header>
+        <h1>Listagem dos Veterinários</h1>
+    </header>
+    <nav>
+        <button><a href="/">Início</a></button>
+        <button id="novoBtn">Novo</button>
+        <button id="editarBtn" style="display: none;">Editar</button>
+        <button id="excluirBtn" style="display: none;">Excluir</button>
+    </nav>
+
+    <section id="vet-list">
+        <ul>
+            {{#each veterinarios}}
+            <li>
+                <input type="checkbox" class="vet-checkbox" data-id="{{ID}}" data-nome="{{nome}}"
+                    data-dataNascimento="{{dataNascimento}}" data-cfmv="{{CFMV}}">
+
+                <span>Nome: {{nome}}</span><br>
+                Data de Nascimento: {{dataNascimento}}<br>
+                CFMV: {{CFMV}}<br>
+            </li>
+            {{/each}}
+        </ul>
+    </section>
+
+    <!-- Modal de Cadastro/Edição -->
+    <div id="cadastroModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Cadastrar/Editar Veterinário</h2>
+            <form id="cadastroForm" action="/insert-veterinario" method="post">
+                <input type="hidden" id="vetId" name="id"> <!-- Campo oculto para o ID do veterinário -->
+
+                <label for="nome">Nome:</label>
+                <input type="text" id="nome" name="nome" required><br><br>
+
+                <label for="dataNascimento">Data de Nascimento:</label>
+                <input type="date" id="dataNascimento" name="dataNascimento" required><br><br>
+
+                <label for="cfmv">CFMV:</label>
+                <input type="number" id="cfmv" name="CFMV" required><br><br>
+
+                <button type="submit">Salvar</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const novoBtn = document.getElementById('novoBtn');
+        const editarBtn = document.getElementById('editarBtn');
+        const excluirBtn = document.getElementById('excluirBtn');
+        const vetCheckboxes = document.querySelectorAll('.vet-checkbox');
+        const modal = document.getElementById('cadastroModal');
+        const cadastroForm = document.getElementById('cadastroForm');
+        const closeBtn = document.querySelector('.close-btn');
+
+        // Evento para abrir o modal de novo cadastro
+        novoBtn.addEventListener('click', () => {
+            cadastroForm.reset();
+            document.getElementById('vetId').value = ''; // Limpa o ID para novo cadastro
+            cadastroForm.action = '/insert-veterinario'; // Define a ação para criar um novo veterinário
+            modal.style.display = 'block';
+        });
+
+        // Evento para fechar o modal
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        // Função para atualizar os botões com base na seleção
+        function atualizarBotoes() {
+            const selecionados = document.querySelectorAll('.vet-checkbox:checked');
+            editarBtn.style.display = selecionados.length === 1 ? 'inline-block' : 'none';
+            excluirBtn.style.display = selecionados.length > 0 ? 'inline-block' : 'none';
+        }
+
+        // Adiciona evento para verificar as seleções e atualizar os botões
+        vetCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', atualizarBotoes);
+        });
+
+        // Evento para editar o veterinário selecionado
+        editarBtn.addEventListener('click', () => {
+            const selecionado = document.querySelector('.vet-checkbox:checked');
+            if (selecionado) {
+                const vetId = selecionado.getAttribute('data-id');
+                const nome = selecionado.getAttribute('data-nome');
+                const dataNascimento = selecionado.getAttribute('data-dataNascimento');
+                const cfmv = selecionado.getAttribute('data-cfmv');
+
+                // Preencher o formulário com os dados correspondentes
+                document.getElementById('vetId').value = vetId;
+                document.getElementById('nome').value = nome;
+
+                // Converte a data do formato 'dd/mm/yyyy' para 'yyyy-mm-dd'
+                const [day, month, year] = dataNascimento.split('/');
+                const formattedDate = `${year}-${month}-${day}`;
+                document.getElementById('dataNascimento').value = formattedDate;
+
+                document.getElementById('cfmv').value = cfmv;
+
+                // Exibir o modal
+                modal.style.display = 'block';
+                cadastroForm.action = '/update-veterinario/' + vetId;
+            }
+        });
+
+        // Evento para excluir o veterinário selecionado
+        excluirBtn.addEventListener('click', () => {
+            const selecionados = document.querySelectorAll('.vet-checkbox:checked');
+            if (selecionados.length > 0) {
+                const vetIds = Array.from(selecionados).map(checkbox => checkbox.getAttribute('data-id'));
+                if (confirm('Tem certeza que deseja excluir os veterinários selecionados?')) {
+                    fetch('/delete-veterinarios', {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ ids: vetIds }),
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            location.reload(); // Recarrega a página para atualizar a lista
+                        } else {
+                            alert('Erro ao excluir os veterinários.');
+                        }
+                    })
+                    .catch(error => console.error('Erro ao excluir veterinários:', error));
+                }
+            }
+        });
+    });
+</script>

@@ -1,0 +1,182 @@
+<div class="container">
+    <header>
+        <h1>Listagem dos Animais</h1>
+    </header>
+    <nav>
+      <button> <a href="/">Incio</a></button>
+        <button id="novoBtn">Novo</button>
+        <button id="editarBtn" style="display: none;">Editar</button>
+        <button id="excluirBtn" style="display: none;">Excluir</button>
+    </nav>
+
+    <section id="animal-list">
+        <ul>
+            {{#each animais}}
+            <li>
+                <input type="checkbox" class="animal-checkbox" data-id="{{ID}}" data-nome="{{nome}}"
+                    data-tipo="{{tipo}}" data-raca="{{raca}}" data-cor="{{cor}}" data-nomeDono="{{nomeDono}}"
+                    data-veterinarioId="{{veterinario.id}}">
+
+                <span>Nome: {{nome}}</span><br>
+                Tipo: {{tipo}}<br>
+                Raça: {{raca}}<br>
+                Cor: {{cor}}<br>
+                Nome do Dono: {{nomeDono}}<br>
+                Veterinário: {{veterinario.nome}}
+                <br>
+            </li>
+            {{/each}}
+        </ul>
+    </section>
+
+    <!-- Modal de Cadastro/Edição -->
+    <div id="cadastroModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Cadastrar/Editar Animal</h2>
+            <form id="cadastroForm" action="/insert-animal" method="post">
+                <input type="hidden" id="animalId" name="id"> <!-- Campo oculto para o ID do animal -->
+
+                <label for="nome">Nome:</label>
+                <input type="text" id="nome" name="nome" required><br><br>
+
+                <label for="tipo">Tipo:</label>
+                <input type="text" id="tipo" name="tipo" required><br><br>
+
+                <label for="raca">Raça:</label>
+                <input type="text" id="raca" name="raca" required><br><br>
+
+                <label for="cor">Cor:</label>
+                <input type="text" id="cor" name="cor" required><br><br>
+
+                <label for="nomeDono">Nome do Dono:</label>
+                <input type="text" id="nomeDono" name="nomeDono" required><br><br>
+
+                <label for="veterinario">Veterinário:</label>
+                <select id="veterinario" name="veterinario">
+                    <!-- As opções serão adicionadas dinamicamente -->
+                </select><br><br>
+
+                <button type="submit">Salvar</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const novoBtn = document.getElementById('novoBtn');
+        const editarBtn = document.getElementById('editarBtn');
+        const excluirBtn = document.getElementById('excluirBtn');
+        const animalCheckboxes = document.querySelectorAll('.animal-checkbox');
+        const modal = document.getElementById('cadastroModal');
+        const cadastroForm = document.getElementById('cadastroForm');
+        const closeBtn = document.querySelector('.close-btn');
+        const veterinarioSelect = document.getElementById('veterinario');
+
+        // Função para carregar veterinários e adicionar opções ao select
+        function carregarVeterinarios() {
+            fetch('/lst-veterinarios')
+                .then(response => response.json())
+                .then(data => {
+                    veterinarioSelect.innerHTML = '';
+                    data.forEach(veterinario => {
+                        const option = document.createElement('option');
+                        option.value = veterinario.ID;
+                        option.textContent = veterinario.nome;
+                        veterinarioSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Erro ao carregar veterinários:', error));
+        }
+
+        // Evento para abrir o modal de novo cadastro
+        novoBtn.addEventListener('click', () => {
+            cadastroForm.reset();
+            document.getElementById('animalId').value = ''; // Limpa o ID para novo cadastro
+            cadastroForm.action = '/insert-animal'; // Define a ação para criar um novo animal
+            modal.style.display = 'block';
+            carregarVeterinarios();
+        });
+
+        // Evento para fechar o modal
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        // Função para atualizar os botões com base na seleção
+        function atualizarBotoes() {
+            const selecionados = document.querySelectorAll('.animal-checkbox:checked');
+            editarBtn.style.display = selecionados.length === 1 ? 'inline-block' : 'none';
+            excluirBtn.style.display = selecionados.length > 0 ? 'inline-block' : 'none';
+        }
+
+        // Adiciona evento para verificar as seleções e atualizar os botões
+        animalCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', atualizarBotoes);
+        });
+
+        // Evento para editar o animal selecionado
+        editarBtn.addEventListener('click', () => {
+            const selecionado = document.querySelector('.animal-checkbox:checked');
+            if (selecionado) {
+                const animalId = selecionado.getAttribute('data-id');
+                const nome = selecionado.getAttribute('data-nome');
+                const tipo = selecionado.getAttribute('data-tipo');
+                const raca = selecionado.getAttribute('data-raca');
+                const cor = selecionado.getAttribute('data-cor');
+                const nomeDono = selecionado.getAttribute('data-nomeDono');
+                const veterinarioId = selecionado.getAttribute('data-veterinarioId');
+
+                // Preencher o formulário com os dados correspondentes
+                document.getElementById('animalId').value = animalId;
+                document.getElementById('nome').value = nome;
+                document.getElementById('tipo').value = tipo;
+                document.getElementById('raca').value = raca;
+                document.getElementById('cor').value = cor;
+                document.getElementById('nomeDono').value = nomeDono;
+                document.getElementById('veterinario').value = veterinarioId;
+
+                // Exibir o modal
+                modal.style.display = 'block';
+                cadastroForm.action = '/update-animal/' + animalId;
+
+                carregarVeterinarios();
+            }
+        });
+
+        // Evento para excluir o animal selecionado
+        excluirBtn.addEventListener('click', () => {
+            const selecionados = document.querySelectorAll('.animal-checkbox:checked');
+            if (selecionados.length > 0) {
+                const animalIds = Array.from(selecionados).map(checkbox => checkbox.getAttribute('data-id'));
+                if (confirm('Tem certeza que deseja excluir os animais selecionados?')) {
+                    fetch('/delete-animals', {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ ids: animalIds }),
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            location.reload(); // Recarrega a página para atualizar a lista
+                        } else {
+                            alert('Erro ao excluir os animais.');
+                        }
+                    })
+                    .catch(error => console.error('Erro ao excluir animais:', error));
+                }
+            }
+        });
+
+        // Carregar veterinários ao carregar a página
+        carregarVeterinarios();
+    });
+</script>
